@@ -14,8 +14,8 @@
 **pathrouter** is a lightweight high performance path request router.
 
 In contrast to the [default mux](https://golang.org/pkg/net/http/#ServeMux) of
-Go's `net/http** package, this router supports variables in the routing pattern.
-**It does not use HTTP semantics and is intended for matching paths only.***
+Go's `net/http` package, this router supports variables in the routing pattern.
+**It does not use HTTP semantics and is intended for matching paths only.**
 
 The router is optimized for high performance and a small memory footprint. It
 scales well even with very long paths and a large number of routes. A
