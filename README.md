@@ -1,16 +1,31 @@
-# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.svg?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![Coverage Status](https://coveralls.io/repos/github/julienschmidt/httprouter/badge.svg?branch=master)](https://coveralls.io/github/julienschmidt/httprouter?branch=master) [![Docs](https://godoc.org/github.com/julienschmidt/httprouter?status.svg)](http://pkg.go.dev/github.com/julienschmidt/httprouter)
+# Path Router
 
-HttpRouter is a lightweight high performance HTTP request router (also called *multiplexer* or just *mux* for short) for [Go](https://golang.org/).
+[![GoDoc Widget]][GoDoc] [![Go Report Card Widget]][Go Report Card]
 
-In contrast to the [default mux](https://golang.org/pkg/net/http/#ServeMux) of Go's `net/http` package, this router supports variables in the routing pattern and matches against the request method. It also scales better.
+> Fork of julienschmidt/httprouter to route paths without HTTP semantics.
 
-The router is optimized for high performance and a small memory footprint. It scales well even with very long paths and a large number of routes. A compressing dynamic trie (radix tree) structure is used for efficient matching.
+[GoDoc]: https://godoc.org/github.com/aperturerobotics/httprouter
+[GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/httprouter?status.svg
+[Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/httprouter
+[Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/httprouter
+
+## Introduction
+
+**pathrouter** is a lightweight high performance path request router.
+
+In contrast to the [default mux](https://golang.org/pkg/net/http/#ServeMux) of
+Go's `net/http** package, this router supports variables in the routing pattern.
+**It does not use HTTP semantics and is intended for matching paths only.***
+
+The router is optimized for high performance and a small memory footprint. It
+scales well even with very long paths and a large number of routes. A
+compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 ## Features
 
 **Only explicit matches:** With other routers, like [`http.ServeMux`](https://golang.org/pkg/net/http/#ServeMux), a requested URL path could match multiple patterns. Therefore they have some awkward pattern priority rules, like *longest match* or *first registered, first matched*. By design of this router, a request can only match exactly one or no route. As a result, there are also no unintended matches, which makes it great for SEO and improves the user experience.
 
-**Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can [turn off this behavior](https://godoc.org/github.com/julienschmidt/httprouter#Router.RedirectTrailingSlash).
+**Stop caring about trailing slashes:** Choose the URL style you like, the router automatically redirects the client if a trailing slash is missing or if there is one extra. Of course it only does so, if the new path has a handler. If you don't like it, you can [turn off this behavior](https://godoc.org/github.com/aperturerobotics/pathrouter#Router.RedirectTrailingSlash).
 
 **Path auto-correction:** Besides detecting the missing or additional trailing slash at no extra cost, the router can also fix wrong cases and remove superfluous path elements (like `../` or `//`). Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Caps+Lock) one of your users? HttpRouter can help him by making a case-insensitive look-up and redirecting him to the correct URL.
 
@@ -20,15 +35,11 @@ The router is optimized for high performance and a small memory footprint. It sc
 
 **Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark). See below for technical details of the implementation.
 
-**No more server crashes:** You can set a [Panic handler](https://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler) to deal with panics occurring during handling a HTTP request. The router then recovers and lets the `PanicHandler` log what happened and deliver a nice error page.
-
-**Perfect for APIs:** The router design encourages to build sensible, hierarchical RESTful APIs. Moreover it has built-in native support for [OPTIONS requests](http://zacstewart.com/2012/04/14/http-options-method.html) and `405 Method Not Allowed` replies.
-
-Of course you can also set **custom [`NotFound`](https://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound) and  [`MethodNotAllowed`](https://godoc.org/github.com/julienschmidt/httprouter#Router.MethodNotAllowed) handlers** and [**serve static files**](https://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles).
+**No more server crashes:** You can set a [Panic handler](https://godoc.org/github.com/aperturerobotics/pathrouter#Router.PanicHandler) to deal with panics. The router then recovers and lets the `PanicHandler` log what happened.
 
 ## Usage
 
-This is just a quick introduction, view the [Docs](http://pkg.go.dev/github.com/julienschmidt/httprouter) for details.
+This is just a quick introduction, view the [Docs](http://pkg.go.dev/github.com/aperturerobotics/pathrouter) for details.
 
 Let's start with a trivial example:
 
@@ -36,33 +47,56 @@ Let's start with a trivial example:
 package main
 
 import (
-    "fmt"
-    "net/http"
-    "log"
+	"context"
+	"fmt"
 
-    "github.com/julienschmidt/httprouter"
+	"github.com/aperturerobotics/pathrouter"
 )
 
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-    fmt.Fprint(w, "Welcome!\n")
+// Responder is a custom struct used in place of a response writer.
+type Responder struct {
 }
 
-func Hello(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-    fmt.Fprintf(w, "hello, %s!\n", ps.ByName("name"))
+func (r *Responder) Respond(ctx context.Context, path, resp string) error {
+	fmt.Printf("path=%s responded with: %s", path, resp)
+	return nil
+}
+
+func Index(ctx context.Context, reqPath string, p pathrouter.Params, rw *Responder) (bool, error) {
+	return true, rw.Respond(ctx, reqPath, "Welcome!\n")
+}
+
+func Hello(ctx context.Context, reqPath string, p pathrouter.Params, rw *Responder) (bool, error) {
+	return true, rw.Respond(ctx, reqPath, fmt.Sprintf("hello, %s!\n", p.ByName("name")))
 }
 
 func main() {
-    router := httprouter.New()
-    router.GET("/", Index)
-    router.GET("/hello/:name", Hello)
+	router := pathrouter.New[*Responder]()
+	router.AddHandler("/", Index)
+	router.AddHandler("/hello/:name", Hello)
 
-    log.Fatal(http.ListenAndServe(":8080", router))
+	ctx := context.Background()
+	resp := &Responder{}
+
+    // path=/ responded with: Welcome!
+	router.Serve(ctx, "/", resp)
+    // path=/hello/world responded with: hello, world!
+	router.Serve(ctx, "/hello/world", resp)
+    // path=/hello/reader responded with: hello, reader!
+	router.Serve(ctx, "/hello/reader", resp)
 }
 ```
 
+Some things to note when compared to typical HTTP request handlers:
+
+ - The router uses generics to pass a custom response writer type.
+ - The context is passed separately in the arguments to handlers.
+ - All handlers can return an error and a bool indicating "not found" if false.
+ - The router strictly operates on paths and ignores the rest of the URL.
+
 ### Named parameters
 
-As you can see, `:name` is a *named parameter*. The values are accessible via `httprouter.Params`, which is just a slice of `httprouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method: `:name` can be retrieved by `ByName("name")`.
+As you can see, `:name` is a *named parameter*. The values are accessible via `pathrouter.Params`, which is just a slice of `pathrouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method: `:name` can be retrieved by `ByName("name")`.
 
 When using a `http.Handler` (using `router.Handler` or `http.HandlerFunc`) instead of HttpRouter's handle API using a 3rd function parameter, the named parameters are stored in the `request.Context`. See more below under [Why doesn't this work with http.Handler?](#why-doesnt-this-work-with-httphandler).
 
@@ -130,171 +164,12 @@ For even better scalability, the child nodes on each tree level are ordered by p
 
 ## Why doesn't this work with `http.Handler`?
 
-**It does!** The router itself implements the `http.Handler` interface. Moreover the router provides convenient [adapters for `http.Handler`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handler)s and [`http.HandlerFunc`](https://godoc.org/github.com/julienschmidt/httprouter#Router.HandlerFunc)s which allows them to be used as a [`httprouter.Handle`](https://godoc.org/github.com/julienschmidt/httprouter#Router.Handle) when registering a route.
+This router is intended to be used for situations where routing paths are the
+primary concern. It's not intended to be used as a HTTP handler, although it
+definitely could be, just pass http.ResponseWriter as the response type.
 
-Named parameters can be accessed `request.Context`:
+## Attribution
 
-```go
-func Hello(w http.ResponseWriter, r *http.Request) {
-    params := httprouter.ParamsFromContext(r.Context())
+This repository is a fork of [julienschmidt/httprouter].
 
-    fmt.Fprintf(w, "hello, %s!\n", params.ByName("name"))
-}
-```
-
-Alternatively, one can also use `params := r.Context().Value(httprouter.ParamsKey)` instead of the helper function.
-
-Just try it out for yourself, the usage of HttpRouter is very straightforward. The package is compact and minimalistic, but also probably one of the easiest routers to set up.
-
-## Automatic OPTIONS responses and CORS
-
-One might wish to modify automatic responses to OPTIONS requests, e.g. to support [CORS preflight requests](https://developer.mozilla.org/en-US/docs/Glossary/preflight_request) or to set other headers.
-This can be achieved using the [`Router.GlobalOPTIONS`](https://godoc.org/github.com/julienschmidt/httprouter#Router.GlobalOPTIONS) handler:
-
-```go
-router.GlobalOPTIONS = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-    if r.Header.Get("Access-Control-Request-Method") != "" {
-        // Set CORS headers
-        header := w.Header()
-        header.Set("Access-Control-Allow-Methods", header.Get("Allow"))
-        header.Set("Access-Control-Allow-Origin", "*")
-    }
-
-    // Adjust status code to 204
-    w.WriteHeader(http.StatusNoContent)
-})
-```
-
-## Where can I find Middleware *X*?
-
-This package just provides a very efficient request router with a few extra features. The router is just a [`http.Handler`](https://golang.org/pkg/net/http/#Handler), you can chain any http.Handler compatible middleware before the router, for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers). Or you could [just write your own](https://justinas.org/writing-http-middleware-in-go/), it's very easy!
-
-Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
-
-### Multi-domain / Sub-domains
-
-Here is a quick example: Does your server serve multiple domains / hosts?
-You want to use sub-domains?
-Define a router per host!
-
-```go
-// We need an object that implements the http.Handler interface.
-// Therefore we need a type for which we implement the ServeHTTP method.
-// We just use a map here, in which we map host names (with port) to http.Handlers
-type HostSwitch map[string]http.Handler
-
-// Implement the ServeHTTP method on our new type
-func (hs HostSwitch) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Check if a http.Handler is registered for the given host.
-	// If yes, use it to handle the request.
-	if handler := hs[r.Host]; handler != nil {
-		handler.ServeHTTP(w, r)
-	} else {
-		// Handle host names for which no handler is registered
-		http.Error(w, "Forbidden", 403) // Or Redirect?
-	}
-}
-
-func main() {
-	// Initialize a router as usual
-	router := httprouter.New()
-	router.GET("/", Index)
-	router.GET("/hello/:name", Hello)
-
-	// Make a new HostSwitch and insert the router (our http handler)
-	// for example.com and port 12345
-	hs := make(HostSwitch)
-	hs["example.com:12345"] = router
-
-	// Use the HostSwitch to listen and serve on port 12345
-	log.Fatal(http.ListenAndServe(":12345", hs))
-}
-```
-
-### Basic Authentication
-
-Another quick example: Basic Authentication (RFC 2617) for handles:
-
-```go
-package main
-
-import (
-	"fmt"
-	"log"
-	"net/http"
-
-	"github.com/julienschmidt/httprouter"
-)
-
-func BasicAuth(h httprouter.Handle, requiredUser, requiredPassword string) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// Get the Basic Authentication credentials
-		user, password, hasAuth := r.BasicAuth()
-
-		if hasAuth && user == requiredUser && password == requiredPassword {
-			// Delegate request to the given handle
-			h(w, r, ps)
-		} else {
-			// Request Basic Authentication otherwise
-			w.Header().Set("WWW-Authenticate", "Basic realm=Restricted")
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-		}
-	}
-}
-
-func Index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Not protected!\n")
-}
-
-func Protected(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	fmt.Fprint(w, "Protected!\n")
-}
-
-func main() {
-	user := "gordon"
-	pass := "secret!"
-
-	router := httprouter.New()
-	router.GET("/", Index)
-	router.GET("/protected/", BasicAuth(Protected, user, pass))
-
-	log.Fatal(http.ListenAndServe(":8080", router))
-}
-```
-
-## Chaining with the NotFound handler
-
-**NOTE: It might be required to set [`Router.HandleMethodNotAllowed`](https://godoc.org/github.com/julienschmidt/httprouter#Router.HandleMethodNotAllowed) to `false` to avoid problems.**
-
-You can use another [`http.Handler`](https://golang.org/pkg/net/http/#Handler), for example another router, to handle requests which could not be matched by this router by using the [`Router.NotFound`](https://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound) handler. This allows chaining.
-
-### Static files
-
-The `NotFound` handler can for example be used to serve static files from the root path `/` (like an `index.html` file along with other assets):
-
-```go
-// Serve static files from the ./public directory
-router.NotFound = http.FileServer(http.Dir("public"))
-```
-
-But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
-
-## Web Frameworks based on HttpRouter
-
-If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
-
-* [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
-* [api2go](https://github.com/manyminds/api2go): A JSON API Implementation for Go
-* [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
-* [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
-* [goMiddlewareChain](https://github.com/TobiEiss/goMiddlewareChain): An express.js-like-middleware-chain
-* [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
-* [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
-* [httpway](https://github.com/corneldamian/httpway): Simple middleware extension with context for httprouter and a server with gracefully shutdown support
-* [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
-* [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
-* [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
-* [pbgo](https://github.com/chai2010/pbgo): pbgo is a mini RPC/REST framework based on Protobuf
-* [River](https://github.com/abiosoft/river): River is a simple and lightweight REST server
-* [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts
-* [xmux](https://github.com/rs/xmux): xmux is a httprouter fork on top of xhandler (net/context aware)
+[julienschmidt/httprouter]: https://github.com/julienschmidt/httprouter
