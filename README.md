@@ -78,11 +78,11 @@ func main() {
 	ctx := context.Background()
 	resp := &Responder{}
 
-    // path=/ responded with: Welcome!
+ 	// path=/ responded with: Welcome!
 	router.Serve(ctx, "/", resp)
-    // path=/hello/world responded with: hello, world!
+	// path=/hello/world responded with: hello, world!
 	router.Serve(ctx, "/hello/world", resp)
-    // path=/hello/reader responded with: hello, reader!
+	// path=/hello/reader responded with: hello, reader!
 	router.Serve(ctx, "/hello/reader", resp)
 }
 ```
@@ -96,7 +96,7 @@ Some things to note when compared to typical HTTP request handlers:
 
 ### Named parameters
 
-As you can see, `:name` is a *named parameter*. The values are accessible via `pathrouter.Params`, which is just a slice of `pathrouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` method: `:name` can be retrieved by `ByName("name")`.
+As you can see, `:name` is a *named parameter*. The values are accessible via `pathrouter.Params`, which is just a slice of `pathrouter.Param`s. You can get the value of a parameter either by its index in the slice, or by using the `ByName(name)` function: `:name` can be retrieved by `ByName("name")`.
 
 When using a `http.Handler` (using `router.Handler` or `http.HandlerFunc`) instead of HttpRouter's handle API using a 3rd function parameter, the named parameters are stored in the `request.Context`. See more below under [Why doesn't this work with http.Handler?](#why-doesnt-this-work-with-httphandler).
 
@@ -111,7 +111,7 @@ Pattern: /user/:user
  /user/                    no match
 ```
 
-**Note:** Since this router has only explicit matches, you can not register static routes and parameters for the same path segment. For example you can not register the patterns `/user/new` and `/user/:user` for the same request method at the same time. The routing of different request methods is independent from each other.
+**Note:** Since this router has only explicit matches, you can not register static routes and parameters for the same path segment. For example you can not register the patterns `/user/new` and `/user/:user` at the same time.
 
 ### Catch-All parameters
 
@@ -127,7 +127,7 @@ Pattern: /src/*filepath
 
 ## How does it work?
 
-The router relies on a tree structure which makes heavy use of *common prefixes*, it is basically a *compact* [*prefix tree*](https://en.wikipedia.org/wiki/Trie) (or just [*Radix tree*](https://en.wikipedia.org/wiki/Radix_tree)). Nodes with a common prefix also share a common parent. Here is a short example what the routing tree for the `GET` request method could look like:
+The router relies on a tree structure which makes heavy use of *common prefixes*, it is basically a *compact* [*prefix tree*](https://en.wikipedia.org/wiki/Trie) (or just [*Radix tree*](https://en.wikipedia.org/wiki/Radix_tree)). Nodes with a common prefix also share a common parent. Here is a short example what the routing tree could look like:
 
 ```
 Priority   Path             Handle
@@ -145,7 +145,7 @@ Priority   Path             Handle
 
 Every `*<num>` represents the memory address of a handler function (a pointer). If you follow a path trough the tree from the root to the leaf, you get the complete route path, e.g `\blog\:post\`, where `:post` is just a placeholder ([*parameter*](#named-parameters)) for an actual post name. Unlike hash-maps, a tree structure also allows us to use dynamic parts like the `:post` parameter, since we actually match against the routing patterns instead of just comparing hashes. [As benchmarks show](https://github.com/julienschmidt/go-http-routing-benchmark), this works very well and efficient.
 
-Since URL paths have a hierarchical structure and make use only of a limited set of characters (byte values), it is very likely that there are a lot of common prefixes. This allows us to easily reduce the routing into ever smaller problems. Moreover the router manages a separate tree for every request method. For one thing it is more space efficient than holding a method->handle map in every single node, it also allows us to greatly reduce the routing problem before even starting the look-up in the prefix-tree.
+Since URL paths have a hierarchical structure and make use only of a limited set of characters (byte values), it is very likely that there are a lot of common prefixes. This allows us to easily reduce the routing into ever smaller problems.
 
 For even better scalability, the child nodes on each tree level are ordered by priority, where the priority is just the number of handles registered in sub nodes (children, grandchildren, and so on..). This helps in two ways:
 
@@ -173,3 +173,7 @@ definitely could be, just pass http.ResponseWriter as the response type.
 This repository is a fork of [julienschmidt/httprouter].
 
 [julienschmidt/httprouter]: https://github.com/julienschmidt/httprouter
+
+## License
+
+BSD-3

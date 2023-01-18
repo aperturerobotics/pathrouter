@@ -89,8 +89,7 @@ type RouterConfig[W any] struct {
 	// Enables automatic redirection if the current route can't be matched but a
 	// handler for the path with (without) the trailing slash exists.
 	// For example if /foo/ is requested but a route only exists for /foo, the
-	// client is redirected to /foo with http status code 301 for GET requests
-	// and 308 for all other request methods.
+	// client is redirected to /foo
 	RedirectTrailingSlash bool
 
 	// RedirectFixedPath configures the router to fix the current request path, if no
@@ -106,7 +105,7 @@ type RouterConfig[W any] struct {
 	// NotFound is called when no matching route is found.
 	NotFound Handle[W]
 
-	// Function to handle panics recovered from http handlers.
+	// Function to handle panics recovered from handlers.
 	// If nil, no recover() will be called (panics will throw).
 	// The fourth parameter is the error from recover().
 	PanicHandler func(ctx context.Context, reqPath string, rw W, panicErr interface{})
@@ -160,13 +159,7 @@ func (r *Router[W]) putParams(ps *Params) {
 	}
 }
 
-// AddHandler registers a new request handle with the given path and method.
-//
-// This function is intended for bulk loading and to allow the usage of less
-// frequently used, non-standardized or custom methods (e.g. for internal
-// communication with a proxy).
-//
-// NOTE: this function is NOT concurrency safe.
+// AddHandler registers a new request handle with the given path.
 func (r *Router[W]) AddHandler(path string, handle Handle[W]) {
 	if handle == nil {
 		return
@@ -283,5 +276,6 @@ func (r *Router[W]) Serve(ctx context.Context, reqPath string, wr W) (bool, erro
 	if r.conf.NotFound == nil {
 		return false, nil
 	}
+
 	return r.conf.NotFound(ctx, reqPath, nil, wr)
 }

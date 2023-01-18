@@ -31,7 +31,11 @@ func main() {
 
 	ctx := context.Background()
 	resp := &Responder{}
+
+	// path=/ responded with: Welcome!
 	router.Serve(ctx, "/", resp)
+	// path=/hello/world responded with: hello, world!
 	router.Serve(ctx, "/hello/world", resp)
+	// path=/hello/reader responded with: hello, reader!
 	router.Serve(ctx, "/hello/reader", resp)
 }

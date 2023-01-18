@@ -7,29 +7,12 @@ package pathrouter
 
 import (
 	"context"
-	"net/http"
 	"reflect"
 	"sync/atomic"
 	"testing"
 
 	"github.com/pkg/errors"
 )
-
-type mockResponseWriter struct{}
-
-func (m *mockResponseWriter) Header() (h http.Header) {
-	return http.Header{}
-}
-
-func (m *mockResponseWriter) Write(p []byte) (n int, err error) {
-	return len(p), nil
-}
-
-func (m *mockResponseWriter) WriteString(s string) (n int, err error) {
-	return len(s), nil
-}
-
-func (m *mockResponseWriter) WriteHeader(int) {}
 
 func TestParams(t *testing.T) {
 	ps := Params{
@@ -152,7 +135,7 @@ func TestRouterNotFoundHandler(t *testing.T) {
 		return true, nil
 	}
 
-	router := NewWithConfig[struct{}](routerConf)
+	router := NewWithConfig(routerConf)
 	router.AddHandler("/path", handlerFunc)
 
 	// Test custom not found handler
@@ -172,7 +155,7 @@ func TestRouterPanicHandler(t *testing.T) {
 	routerConf.PanicHandler = func(ctx context.Context, reqPath string, rw struct{}, panicErr interface{}) {
 		panicHandled = true
 	}
-	router := NewWithConfig[struct{}](routerConf)
+	router := NewWithConfig(routerConf)
 
 	router.AddHandler("/user/:name", func(ctx context.Context, reqPath string, p Params, rw struct{}) (bool, error) {
 		panic("oops!")
