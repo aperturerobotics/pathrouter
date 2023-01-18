@@ -31,11 +31,9 @@ compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 **Parameters in your routing pattern:** Stop parsing the requested URL path, just give the path segment a name and the router delivers the dynamic value to you. Because of the design of the router, path parameters are very cheap.
 
-**Zero Garbage:** The matching and dispatching process generates zero bytes of garbage. The only heap allocations that are made are building the slice of the key-value pairs for path parameters, and building new context and request objects (the latter only in the standard `Handler`/`HandlerFunc` API). In the 3-argument API, if the request path contains no parameters not a single heap allocation is necessary.
-
 **Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark). See below for technical details of the implementation.
 
-**No more server crashes:** You can set a [Panic handler](https://godoc.org/github.com/aperturerobotics/pathrouter#Router.PanicHandler) to deal with panics. The router then recovers and lets the `PanicHandler` log what happened.
+**Handle panics gracefully:** You can set a [Panic handler](https://godoc.org/github.com/aperturerobotics/pathrouter#Router.PanicHandler) to deal with panics. The router then recovers and lets the `PanicHandler` log what happened.
 
 ## Usage
 
