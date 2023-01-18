@@ -4,10 +4,10 @@
 
 > Fork of julienschmidt/httprouter to route paths without HTTP semantics.
 
-[GoDoc]: https://godoc.org/github.com/aperturerobotics/httprouter
-[GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/httprouter?status.svg
-[Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/httprouter
-[Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/httprouter
+[GoDoc]: https://godoc.org/github.com/aperturerobotics/pathrouter
+[GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/pathrouter?status.svg
+[Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/pathrouter
+[Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/pathrouter
 
 ## Introduction
 
